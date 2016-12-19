@@ -24,14 +24,11 @@ int main(int argc, char* argv[]) {
 	vector<KeyPoint> kp;
 	Mat dp;
 
-	ofstream outputfile;
-	outputfile.open("/home/irenerrrd/Escritorio/info3d.txt");
-
-	String nombre1 = "/home/irenerrrd/Images/im";
+	String nombre1 = "/home/irenerrrd/GitHub/Images/im";
 	int num_tot_im = 5;
 	String nombre2 = ".jpg";
 
-	int minHessian = 1000;
+	int minHessian = 500;
 	Ptr<SIFT> detector = SIFT::create(minHessian);
 
 	//Lee las imagenes y las almacena en v_im
@@ -68,6 +65,7 @@ int main(int argc, char* argv[]) {
 
 	cout << "Pulsa cualquier tecla" << endl;
 	waitKey(0);
+	vector<Mat> transf;
 
 	//Repasa todas las posibles combinaciones de imagenes
 	for (int i = 0; i < num_tot_im - 1; i++){
@@ -83,9 +81,9 @@ int main(int argc, char* argv[]) {
 
 				float dis1 = matches[k][0].distance ;
 				float dis2 = matches[k][1].distance ;
-//				cout << dis1 << " " << dis2 << " --- ";
+				//				cout << dis1 << " " << dis2 << " --- ";
 				if( dis1 < 200.0 || dis2 < 200.0 ){			//distancia pequeña entre imagen1 e imagen2[0] e imagen2[1]
-					if (  dis2 / dis1 > 1.2){		//la diferencia de distancias es grande, por tanto una de ellas sera buena
+					if (  dis2 / dis1 > 2){		//la diferencia de distancias es grande, por tanto una de ellas sera buena
 						if ( dis1 > dis2 )
 							Best_Matches.push_back(matches[k][1]);	//la distancia mas pequeña es la buena
 						else Best_Matches.push_back(matches[k][0]);
@@ -108,44 +106,55 @@ int main(int argc, char* argv[]) {
 				scene.push_back( v_keypoints[j][ Best_Matches[l].queryIdx ].pt );
 			}
 
-//			cout << "nº puntos encontrados: " << obj.size() << " - " << scene.size() << endl;
-//			waitKey(0);
-
 			Mat mask_inliers_f;
-			Mat F = findFundamentalMat(obj, scene, CV_FM_RANSAC, 5, 0.99, mask_inliers_f);
-			//		cout << "Tiempo de computo f: " << t << endl;
-			cout << "Calculada matriz fundamental: " << F << endl;
+			Mat F = findFundamentalMat(obj, scene, CV_FM_RANSAC, 3, 0.9, mask_inliers_f);
+			//      cout << "Calculada matriz fundamental: " << F << endl;
 
- //			cout << mask_inliers_f << endl;
-//			waitKey(0);
 			Mat im_matches_fund;
-			drawMatches( v_im[i], v_keypoints[i], v_im[j], v_keypoints[j], Best_Matches, im_matches_fund,
+
+			drawMatches(v_im[i], v_keypoints[i], v_im[j], v_keypoints[j], Best_Matches, im_matches_fund,
 					Scalar::all(-1),Scalar::all(-1), mask_inliers_f,
 					DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
 			imshow("F Matches", im_matches_fund);
-			cout << "Matches dibujados" << endl;
-			waitKey(0);
+			//       cout << "Matches dibujados" << endl;
+//			waitKey(0);
 
-			Mat E = findEssentialMat(obj, scene);
-			Mat R1, R2, t1, R, t;
-			decomposeEssentialMat(E, R1, R2, t1);
-			recoverPose(E, obj, scene, R, t);
-			outputfile << "Im" << i+1 << ", Im" << j+1 << endl;
-			outputfile << "E = " << E << endl;
-			outputfile << "R = " << R << endl;
-			outputfile << "t = " << t << endl;
-			outputfile << "--------------------" << endl << endl;
+			double focal = 1.0;
+			cv::Point2d pp(0.0, 0.0);
+			Mat E, R, t, mask;
 
+			E = findEssentialMat(obj, scene, focal, pp, RANSAC, 0.9, 1.0, mask);
+			recoverPose(E, obj, scene, R, t, focal, pp, mask);
 
-			Mat e;
-			SVD::solveZ(F,e);
-			cout << "e = " << e << endl;
+			//			drawMatches( vector_imagenes[i], vector_keypoints[i], vector_imagenes[j], vector_keypoints[j], Best_Matches, im_matches_fund,
+			//								Scalar::all(-1),Scalar::all(-1), mask,
+			//								DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+			//			imshow("E Matches", im_matches_fund);
+
+			cout << "R: " << R << endl << "t:" << t << endl;
+
+			vector<char> datos(4, 0);
+			datos[3] = 1;
+			Mat tran;
+
+			Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
+			//			bottom.at<char>(0,3) = 1;
+			hconcat(R,t,tran);
+			vconcat(tran, bottom, tran);
+			cout << tran << endl;
+
+			transf.push_back(tran);
 			waitKey(0);
 		}
 	}
+	cout << "Se van a multiplicar las matrices" << endl;
 
+	Mat res = transf[0] * transf[4];
+	cout << res << endl;
+	waitKey();
 	destroyAllWindows();
 
-	return 0;
+	return(0);
 }
+
