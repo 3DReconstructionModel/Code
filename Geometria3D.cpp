@@ -3,11 +3,14 @@
 #include <opencv2/core/core.hpp>				//basic building blocks
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgcodecs/imgcodecs.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include "opencv2/features2d.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include <iostream>
 #include <vector>
 #include <stdio.h>
+
+#include "Geometria3D.h"
 
 using namespace cv;
 using namespace std;
@@ -99,15 +102,23 @@ int main(int argc, char* argv[]) {
 
 			vector<Point2f> obj;
 			vector<Point2f> scene;
+			  cv::RNG rng(0);
 
 			for( int l = 0; l < (int)Best_Matches.size(); l++ ){
 				//-- Get the keypoints from the good matches
-				obj.push_back( v_keypoints[i][ Best_Matches[l].trainIdx ].pt );
-				scene.push_back( v_keypoints[j][ Best_Matches[l].queryIdx ].pt );
+			    cv::Scalar color(rng(256),rng(256),rng(256));
+
+				obj.push_back( v_keypoints[i][ Best_Matches[l].queryIdx ].pt );
+				scene.push_back( v_keypoints[j][ Best_Matches[l].trainIdx ].pt );
+//			    cv::circle(v_im[i], v_keypoints[i][ Best_Matches[l].queryIdx ].pt, 3, color, -1, CV_AA);
+//			    cv::circle(v_im[j], v_keypoints[j][ Best_Matches[l].trainIdx ].pt, 3, color, -1, CV_AA);
+//			    imshow("puntos1", v_im[i]);
+//			    imshow("puntos2", v_im[j]);
+//			    waitKey(0);
 			}
 
 			Mat mask_inliers_f;
-			Mat F = findFundamentalMat(obj, scene, CV_FM_RANSAC, 3, 0.9, mask_inliers_f);
+			Mat F = findFundamentalMat(obj, scene, CV_FM_RANSAC, 1, 0.999, mask_inliers_f);
 			//      cout << "Calculada matriz fundamental: " << F << endl;
 
 			Mat im_matches_fund;
@@ -117,20 +128,43 @@ int main(int argc, char* argv[]) {
 					DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
 			imshow("F Matches", im_matches_fund);
-			//       cout << "Matches dibujados" << endl;
-//			waitKey(0);
+			cout << "Matches dibujados" << endl;
+			waitKey(0);
+			String title = "Lineas epipolares";
+			Matx33d Fx((double*)F.ptr());
+			cout << "Fx:" << Fx << endl << "F:" << F << endl;
+			drawEpipolarLines(title , Fx, v_im[i], v_im[j], obj, scene, (float)1.0);
+//			//Dibujamos las líneas epipolares
+//			vector<vector<float> > epipolar;
+//			computeCorrespondEpilines(scene, 1, F, epipolar);
+//
+//			for(int k = 0; k < (int)obj.size(); k++){
+//				float x1 = 0.0;
+//				float y1 = (-epipolar[k][0]*x1 - epipolar[k][2]) / epipolar[k][1];
+//				Point pt1(x1, y1);
+//
+//				float x2 = v_im[i].cols;
+//				float y2 = (-epipolar[k][0]*x2 - epipolar[k][2]) / epipolar[k][1];
+//				Point pt2(x2, y2);
+//
+//				line(v_im[i], pt1, pt2, Scalar(255), 2);
+//
+//			}
+//
+//			imshow("Epipolar lines", v_im[i]);
+//			waitKey();
 
 			double focal = 1.0;
 			cv::Point2d pp(0.0, 0.0);
 			Mat E, R, t, mask;
 
-			E = findEssentialMat(obj, scene, focal, pp, RANSAC, 0.9, 1.0, mask);
+			E = findEssentialMat(obj, scene, focal, pp, RANSAC, 0.9, 3.0, mask);
 			recoverPose(E, obj, scene, R, t, focal, pp, mask);
 
-			//			drawMatches( vector_imagenes[i], vector_keypoints[i], vector_imagenes[j], vector_keypoints[j], Best_Matches, im_matches_fund,
-			//								Scalar::all(-1),Scalar::all(-1), mask,
-			//								DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-			//			imshow("E Matches", im_matches_fund);
+			drawMatches( v_im[i], v_keypoints[i], v_im[j], v_keypoints[j], Best_Matches, im_matches_fund,
+					Scalar::all(-1),Scalar::all(-1), mask,
+					DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+			imshow("E Matches", im_matches_fund);
 
 			cout << "R: " << R << endl << "t:" << t << endl;
 
