@@ -165,7 +165,7 @@ using namespace Eigen;
         //Se multiplican las matrices de Tf con Eigen tipo T12*T23=T13, T12*T24=T14...
         int comb_sistema = 3;
          vector<Matrix4f> MultMatrix1, MultMatrix2, MultMatrix3, MultMatrix4, MultMatrix5;
-
+         vector<float> constant_relations;
             //Para cada sistema se hacen sus 3 combinaciones
             for(int p = 0; p < comb_sistema; p++){
                //T12*T23, T12*T24...
@@ -185,6 +185,14 @@ using namespace Eigen;
                //T51*...
                MultMatrix5[p] = transfEigen[16]*transfEigen[p];
             }
+          //Para obtener las relaciones K2/K3;
+          for(int r = 0; r < comb_sistema; r++){
+              constant_relations[r] = transfEigen[r+1](1,1)/MultMatrix1[r](1,1);
+              constant_relations[r+3] = transfEigen[r+5](1,1) /MultMatrix2[r](1,1);
+              constant_relations[r+9] = transfEigen[r+9](1,1) /MultMatrix3[r](1,1);
+              constant_relations[r+12] = transfEigen[r+13](1,1) /MultMatrix4[r](1,1);
+              constant_relations[r+15] = transfEigen[r+17](1,1) /MultMatrix5[r](1,1);
+          }
         waitKey(0);
         destroyAllWindows();
 
