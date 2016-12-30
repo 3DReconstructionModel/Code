@@ -65,8 +65,6 @@ int main(int argc, char* argv[]) {
 		Mat im_keypoints;
 		drawKeypoints(im, kp, im_keypoints, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
 		//-- Show detected (drawn) keypoints
-//		imshow("Keypoints 1", im_keypoints);
-//		waitKey(10);
 	}
 
 	cout << "Pulsa cualquier tecla" << endl;
@@ -123,7 +121,7 @@ int main(int argc, char* argv[]) {
 			scenes.push_back(scene);
 //			Mat mask_inliers_f;
 //			Mat F = findFundamentalMat(obj, scene, CV_FM_RANSAC, 1, 0.999, mask_inliers_f);
-			//      cout << "Calculada matriz fundamental: " << F << endl;
+//      cout << "Calculada matriz fundamental: " << F << endl;
 
 			Mat im_matches_fund;
 
@@ -172,7 +170,6 @@ int main(int argc, char* argv[]) {
 			//cout << "Eigen" << b << endl;
 			//                transfEigen.push_back(b);
 			transf.push_back(tran);
-			cout << "Holi" << endl;
 //			if (i == 0 && j == 1){
 //				Mat points4D;
 //				Mat intrinsic43;
@@ -188,22 +185,26 @@ int main(int argc, char* argv[]) {
 	}
 
 	Mat points4Da, points4Db;
-	Mat intrinsic43;
 	Mat zeros = (Mat_<double>(3, 1) << 0, 0, 0);
-	hconcat(intrinsic, zeros, intrinsic43);
+	Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
+
+//	hconcat(intrinsic, zeros, intrinsic43);
 //	cout << intrinsic43 << endl << transf[0] << endl;
+	Mat T24;
+	vconcat(transf[5], bottom, T24);
+	Mat A = intrinsic*transf[0]*T24;
+	cout << "A" << endl;
 	Mat B = intrinsic*transf[5];
 	cout << intrinsic.size() << " " << transf[5].size() << " " << B.size() << endl;
 	cout << "B" << endl;
 	Mat C = intrinsic*transf[2];
 	cout << "C" << endl;
-	Mat D = intrinsic*Mat::eye(4,3,CV_32F);
+	Mat D = intrinsic*Mat::eye(3,4,CV_64F);
 	cout << "D" << endl;
 
-	Mat A = intrinsic*transf[5]*transf[0];
-	cout << "A" << endl;
-	triangulatePoints(intrinsic*transf[5]*transf[0], intrinsic*transf[5], objects[0], scenes[0], points4Da);
-	triangulatePoints(intrinsic*transf[2], intrinsic*Mat::eye(3,4,CV_32F), objects[2], scenes[2], points4Db);
+
+	triangulatePoints(A, B, objects[0], scenes[0], points4Da);
+	triangulatePoints(C, D, objects[2], scenes[2], points4Db);
 	cout << points4Da << endl;
 	cout << points4Db << endl;
 //	        cout << "Se van a multiplicar matrices" << endl;
