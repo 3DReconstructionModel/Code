@@ -23,7 +23,11 @@ int main(int argc, char* argv[]) {
     Mat intrinsic = (Mat_<double>(3,3) << 2918.173910427262, 0, 1224.577959082814,
             0, 2712.285042743833, 1598.890793819125,
             0, 0, 1);
-
+    Matrix4f Tintrinsic;
+    Tintrinsic << 2918.173910427262, 0, 1224.577959082814,0,
+            0, 2712.285042743833, 1598.890793819125,0,
+            0, 0, 1,0,
+            0,0,0,0;
     vector<Mat> v_im;
     vector<vector<KeyPoint> > v_keypoints;
     vector<Mat> v_descriptors;
@@ -31,6 +35,8 @@ int main(int argc, char* argv[]) {
     vector<KeyPoint> kp;
     Mat dp;
     vector<Matrix4f> transfEigen;
+    Mat zeros = (Mat_<double>(3, 1) << 0, 0, 0);
+    Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
 
 
     String nombre1 = "/home/pelayo/Documentos/Images/Imagesescritorio/im";
@@ -72,6 +78,7 @@ int main(int argc, char* argv[]) {
     cout << "Pulsa cualquier tecla" << endl;
     waitKey(0);
     vector<Mat> transf;
+    vector<Matrix4f> transf_eigen;
     vector<vector<Point2f> > objects;
     vector<vector<Point2f> > scenes;
 
@@ -159,6 +166,10 @@ int main(int argc, char* argv[]) {
             Mat tran;
             //                Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
             hconcat(R,t,tran);
+            Mat tran1;
+            vconcat(tran, bottom, tran1);
+            Matrix4f tran_eigen;
+            cv2eigen(tran1,tran_eigen);
             //                vconcat(tran, bottom, tran);
 //            cout << "tran"<< tran << endl;
 //			cout << tran.size() << " " << intrinsic.size() << endl;
@@ -172,6 +183,7 @@ int main(int argc, char* argv[]) {
             //cout << "Eigen" << b << endl;
             //                transfEigen.push_back(b);
             transf.push_back(tran);
+            transf_eigen.push_back(tran_eigen);
 //			if (i == 0 && j == 1){
 //				Mat points4D;
 //				Mat intrinsic43;
@@ -187,13 +199,14 @@ int main(int argc, char* argv[]) {
     }
 
     Mat points4Da, points4Db;
-    Mat zeros = (Mat_<double>(3, 1) << 0, 0, 0);
-    Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
+
 
 //	hconcat(intrinsic, zeros, intrinsic43);
 //	cout << intrinsic43 << endl << transf[0] << endl;
-    Mat T24;
+/*    Mat T24;
+
     vconcat(transf[5], bottom, T24);
+
     Mat A = intrinsic*transf[0]*T24;
     cout << "A" << endl;
     Mat B = intrinsic*transf[5];
@@ -202,13 +215,26 @@ int main(int argc, char* argv[]) {
     Mat C = intrinsic*transf[2];
     cout << "C" << endl;
     Mat D = intrinsic*Mat::eye(3,4,CV_64F);
-    cout << "D" << endl;
+    cout << "D" << endl;*/
 
-
+//Mismo procedimiento con Eigen, Se hacen las multiplicaciones en 4x4 y luego se quita la ultima columna para que sea 4x3
+    MatrixXf A_eigen(4,4), B_eigen(4,4), C_eigen(4,4), D_eigen(4,4);
+    A_eigen = Tintrinsic*transf_eigen[0]*transf_eigen[5];
+    B_eigen = Tintrinsic*transf_eigen[5];
+    C_eigen = Tintrinsic*transf_eigen[2];
+    D_eigen = Tintrinsic;
+    A_eigen.conservativeResize(3,4);
+    B_eigen.conservativeResize(3,4);
+    C_eigen.conservativeResize(3,4);
+    D_eigen.conservativeResize(3,4);
+    Mat A, B, C, D;
+    eigen2cv(A_eigen,A);
+    eigen2cv(B_eigen,B);
+    eigen2cv(C_eigen,C);
+    eigen2cv(D_eigen,D);
     triangulatePoints(A, B, objects[0], scenes[0], points4Da);
     triangulatePoints(C, D, objects[2], scenes[2], points4Db);
-    //cout << points4Da << endl;
-    //cout << points4Db << endl;
+
     //Transformation from homogeneus coordinates(x,y,z,t) to Cartesian Coordinates -> (x/t,y/t,z/t)
 
     Eigen::Matrix<float,Dynamic,Dynamic> change;
