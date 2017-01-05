@@ -219,9 +219,9 @@ int main(int argc, char* argv[]) {
 
 //Mismo procedimiento con Eigen, Se hacen las multiplicaciones en 4x4 y luego se quita la ultima columna para que sea 4x3
     MatrixXf A_eigen(4,4), B_eigen(4,4), C_eigen(4,4), D_eigen(4,4);
-    A_eigen = Tintrinsic*transf_eigen[0]*transf_eigen[5];
-    B_eigen = Tintrinsic*transf_eigen[5];
-    C_eigen = Tintrinsic*transf_eigen[2];
+    A_eigen = transf_eigen[5]*transf_eigen[0]*Tintrinsic;
+    B_eigen = Tintrinsic*transf_eigen[5].inverse();
+    C_eigen = Tintrinsic*transf_eigen[2].inverse();
     D_eigen = Tintrinsic;
     A_eigen.conservativeResize(3,4);
     B_eigen.conservativeResize(3,4);
@@ -239,7 +239,7 @@ int main(int argc, char* argv[]) {
 
     Eigen::Matrix<float,Dynamic,Dynamic> change;
     cv2eigen(points4Da,change);
-    Vector3f previo;
+
     MatrixXf mA((points4Da.rows -1), points4Da.cols);
     MatrixXf mB((points4Db.rows -1), points4Db.cols);
     for ( int b = 0; b < points4Da.cols; b++)
