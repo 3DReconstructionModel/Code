@@ -218,8 +218,8 @@ int main(int argc, char* argv[]) {
     cout << "D" << endl;*/
 
 //Mismo procedimiento con Eigen, Se hacen las multiplicaciones en 4x4 y luego se quita la ultima columna para que sea 4x3
-    MatrixXf A_eigen(4,4), B_eigen(4,4), C_eigen(4,4), D_eigen(4,4);
-    A_eigen = transf_eigen[5]*transf_eigen[0]*Tintrinsic;
+//  MatrixXf A_eigen(4,4), B_eigen(4,4), C_eigen(4,4), D_eigen(4,4);
+/*  A_eigen = transf_eigen[5]*transf_eigen[0]*Tintrinsic;
     B_eigen = Tintrinsic*transf_eigen[5].inverse();
     C_eigen = Tintrinsic*transf_eigen[2].inverse();
     D_eigen = Tintrinsic;
@@ -233,11 +233,66 @@ int main(int argc, char* argv[]) {
     eigen2cv(C_eigen,C);
     eigen2cv(D_eigen,D);
     triangulatePoints(A, B, objects[0], scenes[0], points4Da);
-    triangulatePoints(C, D, objects[2], scenes[2], points4Db);
+    triangulatePoints(C, D, objects[2], scenes[2], points4Db); */
+
+    //Triangulation of points
+
+    int num_comb = 10;
+    MatrixXf A_eigen(4,4), B_eigen(4,4), C_eigen(4,4), D_eigen(4,4);
+    Mat A, B, C, D;
+    vector<Mat> triangulation;
+    for(int y = 0; y < num_comb; y ++)
+    {
+        if(y < 4)
+        {
+            A_eigen = Tintrinsic;
+            B_eigen = Tintrinsic*transf_eigen[y].inverse();
+            A_eigen.conservativeResize(3,4);
+            B_eigen.conservativeResize(3,4);
+            eigen2cv(A_eigen,A);
+            eigen2cv(B_eigen,B);
+            triangulatePoints(A, B, objects[y], scenes[y], points4Da);
+            triangulation.push_back(points4Da);
+        }
+        if(y >= 4 && y < 7)
+        {
+            A_eigen = Tintrinsic*transf_eigen[0].inverse();
+            B_eigen = Tintrinsic*transf_eigen[0].inverse()*transf_eigen[y].inverse();
+            A_eigen.conservativeResize(3,4);
+            B_eigen.conservativeResize(3,4);
+            eigen2cv(A_eigen,A);
+            eigen2cv(B_eigen,B);
+            triangulatePoints(A, B, objects[y], scenes[y], points4Da);
+            triangulation.push_back(points4Da);
+        }
+        if(y >= 7 && y < 9)
+        {
+            A_eigen = Tintrinsic*transf_eigen[1].inverse();
+            B_eigen = Tintrinsic*transf_eigen[1].inverse()*transf_eigen[y].inverse();
+            A_eigen.conservativeResize(3,4);
+            B_eigen.conservativeResize(3,4);
+            eigen2cv(A_eigen,A);
+            eigen2cv(B_eigen,B);
+            triangulatePoints(A, B, objects[y], scenes[y], points4Da);
+            triangulation.push_back(points4Da);
+        }
+        if(y == 9)
+        {
+            A_eigen = Tintrinsic*transf_eigen[2].inverse();
+            B_eigen = Tintrinsic*transf_eigen[2].inverse()*transf_eigen[y].inverse();
+            A_eigen.conservativeResize(3,4);
+            B_eigen.conservativeResize(3,4);
+            eigen2cv(A_eigen,A);
+            eigen2cv(B_eigen,B);
+            triangulatePoints(A, B, objects[y], scenes[y], points4Da);
+            triangulation.push_back(points4Da);
+        }
+
+    }
 
     //Transformation from homogeneus coordinates(x,y,z,t) to Cartesian Coordinates -> (x/t,y/t,z/t)
 
-    Eigen::Matrix<float,Dynamic,Dynamic> change;
+/*    Eigen::Matrix<float,Dynamic,Dynamic> change;
     cv2eigen(points4Da,change);
 
     MatrixXf mA((points4Da.rows -1), points4Da.cols);
@@ -270,12 +325,37 @@ int main(int argc, char* argv[]) {
            mB(1,b)= change(1,b)/change(3,b);
            mB(2,b)= change(2,b)/change(3,b);
        }
+    } */
+    //Attemp
+    Eigen::Matrix<float,Dynamic,Dynamic> change;
+    vector < MatrixXf> attemp;
+    for(int t = 0; t < num_comb; t++)
+    {
+        cv2eigen(triangulation[t],change);
+        MatrixXf mA((triangulation[t].rows -1), triangulation[t].cols);
+        for ( int b = 0; b < triangulation[t].cols; b++)
+        {
+           if (change(3,b)== 0){
+               mA(0,b)= change(0,b);
+               mA(1,b)= change(1,b);
+               mA(2,b)= change(2,b);
+           }
+           else
+           {
+               mA(0,b)= change(0,b)/change(3,b);
+               mA(1,b)= change(1,b)/change(3,b);
+               mA(2,b)= change(2,b)/change(3,b);
+           }
+        }
+        attemp.push_back(mA);
     }
+
     //Create a .txt file with the Matrixes
-    txtcreate(mA, mB);
+    txtcreate(attemp[0], attemp[1],attemp[2],attemp[3],attemp[4],attemp[5],attemp[6],attemp[7],attemp[8], attemp[9]);
 
     waitKey(0);
     destroyAllWindows();
 
     return(0);
 }
+
