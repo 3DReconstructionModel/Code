@@ -153,9 +153,9 @@ int main(int argc, char* argv[]) {
             Mat E, R, t, mask;
             undistortPoints(obj,scene,intrinsic,distortion);
             E = findEssentialMat(obj, scene, focal, pp, RANSAC, 0.9, 1.0, mask);
+            correctMatches(E, obj, scene, obj, scene);
             recoverPose(E, obj, scene, R, t, focal, pp, mask);
             Mat im_matches_e;
-            correctMatches(E, obj, scene, obj, scene);
             drawMatches( v_im[i], v_keypoints[i], v_im[j], v_keypoints[j], Best_Matches, im_matches_e,
                     Scalar::all(-1),Scalar::all(-1), mask,
                     DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
