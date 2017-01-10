@@ -27,7 +27,10 @@ int main(int argc, char* argv[]) {
     Tintrinsic << 2918.173910427262, 0, 1224.577959082814,0,
             0, 2712.285042743833, 1598.890793819125,0,
             0, 0, 1,0,
-            0,0,0,0;
+            0,0,0,1;
+    Mat distortion =(Mat_<double>(1,5) << 0.1063833678903079, -0.3218427230614517, 0.001458832745731512, 0.0006713282326283284, 0.3293767665489676);
+    //VectorXf Vdistortion_eigen;
+    //Vdistortion_eigen << 0.1063833678903079, -0.3218427230614517, 0.001458832745731512, 0.0006713282326283284, 0.3293767665489676;
     vector<Mat> v_im;
     vector<vector<KeyPoint> > v_keypoints;
     vector<Mat> v_descriptors;
@@ -39,7 +42,7 @@ int main(int argc, char* argv[]) {
     Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
 
 
-    String nombre1 = "/home/pelayo/Documentos/Images/Imagesescritorio/im";
+    String nombre1 = "/home/pelayo/Documentos/Images/venga/im";
     int num_tot_im = 5;
     String nombre2 = ".jpg";
 
@@ -148,11 +151,11 @@ int main(int argc, char* argv[]) {
             double focal = (intrinsic.at<double>(0, 0) + intrinsic.at<double>(1, 1) ) / 2.0;
             cv::Point2d pp(intrinsic.at<double>(0, 2), intrinsic.at<double>(1, 2));
             Mat E, R, t, mask;
-
+            undistortPoints(obj,scene,intrinsic,distortion);
             E = findEssentialMat(obj, scene, focal, pp, RANSAC, 0.9, 1.0, mask);
             recoverPose(E, obj, scene, R, t, focal, pp, mask);
             Mat im_matches_e;
-
+            correctMatches(E, obj, scene, obj, scene);
             drawMatches( v_im[i], v_keypoints[i], v_im[j], v_keypoints[j], Best_Matches, im_matches_e,
                     Scalar::all(-1),Scalar::all(-1), mask,
                     DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
@@ -220,8 +223,8 @@ int main(int argc, char* argv[]) {
 //Mismo procedimiento con Eigen, Se hacen las multiplicaciones en 4x4 y luego se quita la ultima columna para que sea 4x3
 //  MatrixXf A_eigen(4,4), B_eigen(4,4), C_eigen(4,4), D_eigen(4,4);
 /*  A_eigen = transf_eigen[5]*transf_eigen[0]*Tintrinsic;
-    B_eigen = Tintrinsic*transf_eigen[5].inverse();
-    C_eigen = Tintrinsic*transf_eigen[2].inverse();
+    B_eigen = Tintrinsic*transf_eigen[5];
+    C_eigen = Tintrinsic*transf_eigen[2];
     D_eigen = Tintrinsic;
     A_eigen.conservativeResize(3,4);
     B_eigen.conservativeResize(3,4);
@@ -246,7 +249,7 @@ int main(int argc, char* argv[]) {
         if(y < 4)
         {
             A_eigen = Tintrinsic;
-            B_eigen = Tintrinsic*transf_eigen[y].inverse();
+            B_eigen = Tintrinsic*transf_eigen[y];
             A_eigen.conservativeResize(3,4);
             B_eigen.conservativeResize(3,4);
             eigen2cv(A_eigen,A);
@@ -256,8 +259,8 @@ int main(int argc, char* argv[]) {
         }
         if(y >= 4 && y < 7)
         {
-            A_eigen = Tintrinsic*transf_eigen[0].inverse();
-            B_eigen = Tintrinsic*transf_eigen[0].inverse()*transf_eigen[y].inverse();
+            A_eigen = Tintrinsic*transf_eigen[0];
+            B_eigen = Tintrinsic*transf_eigen[0]*transf_eigen[y];
             A_eigen.conservativeResize(3,4);
             B_eigen.conservativeResize(3,4);
             eigen2cv(A_eigen,A);
@@ -267,8 +270,8 @@ int main(int argc, char* argv[]) {
         }
         if(y >= 7 && y < 9)
         {
-            A_eigen = Tintrinsic*transf_eigen[1].inverse();
-            B_eigen = Tintrinsic*transf_eigen[1].inverse()*transf_eigen[y].inverse();
+            A_eigen = Tintrinsic*transf_eigen[1];
+            B_eigen = Tintrinsic*transf_eigen[1]*transf_eigen[y];
             A_eigen.conservativeResize(3,4);
             B_eigen.conservativeResize(3,4);
             eigen2cv(A_eigen,A);
@@ -278,8 +281,8 @@ int main(int argc, char* argv[]) {
         }
         if(y == 9)
         {
-            A_eigen = Tintrinsic*transf_eigen[2].inverse();
-            B_eigen = Tintrinsic*transf_eigen[2].inverse()*transf_eigen[y].inverse();
+            A_eigen = Tintrinsic*transf_eigen[2];
+            B_eigen = Tintrinsic*transf_eigen[2]*transf_eigen[y];
             A_eigen.conservativeResize(3,4);
             B_eigen.conservativeResize(3,4);
             eigen2cv(A_eigen,A);
@@ -352,10 +355,22 @@ int main(int argc, char* argv[]) {
 
     //Create a .txt file with the Matrixes
     txtcreate(attemp[0], attemp[1],attemp[2],attemp[3],attemp[4],attemp[5],attemp[6],attemp[7],attemp[8], attemp[9]);
+    ofstream myfile;
 
+          myfile.open ("Transf.txt");
+          myfile << "T1= \n [ \n " << transf_eigen[0] << " ]" << endl;
+          myfile << "T2= \n [ \n " << transf_eigen[1] << " ]" << endl;
+          myfile << "T3= \n [ \n " << transf_eigen[2] << " ]" << endl;
+          myfile << "T4= \n [ \n " << transf_eigen[3] << " ]" << endl;
+          myfile << "T5= \n [ \n " << transf_eigen[4] << " ]" << endl;
+          myfile << "T6= \n [ \n " << transf_eigen[5] << " ]" << endl;
+          myfile << "T7= \n [ \n " << transf_eigen[6] << " ]" << endl;
+          myfile << "T8= \n [ \n " << transf_eigen[7] << " ]" << endl;
+          myfile << "T9= \n [ \n " << transf_eigen[8] << " ]" << endl;
+          myfile << "T10= \n [ \n " << transf_eigen[9] << " ]" << endl;
+    myfile.close();
     waitKey(0);
     destroyAllWindows();
 
     return(0);
 }
-
