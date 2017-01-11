@@ -7,6 +7,7 @@
 #include <iostream>
 #include <Dense>
 #include <opencv2/core/eigen.hpp>
+#include <cvsba/cvsba.h>
 
 #include "geometria3d.h"
 #include "txtcreate.h"
