@@ -358,16 +358,16 @@ int main(int argc, char* argv[]) {
     ofstream myfile;
 
           myfile.open ("Transf.txt");
-          myfile << "T1= \n [ \n " << transf_eigen[0] << " ]" << endl;
-          myfile << "T2= \n [ \n " << transf_eigen[1] << " ]" << endl;
-          myfile << "T3= \n [ \n " << transf_eigen[2] << " ]" << endl;
-          myfile << "T4= \n [ \n " << transf_eigen[3] << " ]" << endl;
-          myfile << "T5= \n [ \n " << transf_eigen[4] << " ]" << endl;
-          myfile << "T6= \n [ \n " << transf_eigen[5] << " ]" << endl;
-          myfile << "T7= \n [ \n " << transf_eigen[6] << " ]" << endl;
-          myfile << "T8= \n [ \n " << transf_eigen[7] << " ]" << endl;
-          myfile << "T9= \n [ \n " << transf_eigen[8] << " ]" << endl;
-          myfile << "T10= \n [ \n " << transf_eigen[9] << " ]" << endl;
+          myfile << "T1=[" << transf_eigen[0] << " ]" << endl;
+          myfile << "T2=[" << transf_eigen[1] << " ]" << endl;
+          myfile << "T3=[" << transf_eigen[2] << " ]" << endl;
+          myfile << "T4=[" << transf_eigen[3] << " ]" << endl;
+          myfile << "T5=[" << transf_eigen[4] << " ]" << endl;
+          myfile << "T6=[" << transf_eigen[5] << " ]" << endl;
+          myfile << "T7=[" << transf_eigen[6] << " ]" << endl;
+          myfile << "T8=[" << transf_eigen[7] << " ]" << endl;
+          myfile << "T9=[ " << transf_eigen[8] << " ]" << endl;
+          myfile << "T10=[" << transf_eigen[9] << " ]" << endl;
     myfile.close();
     waitKey(0);
     destroyAllWindows();
