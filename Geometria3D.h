@@ -1,18 +1,14 @@
-/*
- * Geometria3D.h
- *
- *  Created on: 20 dic. 2016
- *      Author: irenerrrd
- */
+#ifndef GEOMETRIA3D_H
+#define GEOMETRIA3D_H
 
-#ifndef SRC_GEOMETRIA3D_H_
-#define SRC_GEOMETRIA3D_H_
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/calib3d/calib3d.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+#include <Dense>
+#include <fstream>
+#include <opencv2/opencv.hpp>
 #include <math.h>
+
+using namespace Eigen;
+using namespace std;
 
 template <typename T>
 static float distancePointLine(const cv::Point_<T> point, const cv::Vec<T,3>& line)
@@ -99,5 +95,22 @@ static void drawEpipolarLines(const std::string& title, const cv::Matx<T1,3,3> F
   cv::imshow(title, outImg);
   cv::waitKey(1);
 }
+void txtcreate(Eigen::Matrix<float,Dynamic,Dynamic> matrix1, Eigen::Matrix<float,Dynamic,Dynamic> matrix2, Eigen::Matrix<float,Dynamic,Dynamic> matrix3, Eigen::Matrix<float,Dynamic,Dynamic> matrix4
+               ,Eigen::Matrix<float,Dynamic,Dynamic> matrix5,Eigen::Matrix<float,Dynamic,Dynamic> matrix6,Eigen::Matrix<float,Dynamic,Dynamic> matrix7,Eigen::Matrix<float,Dynamic,Dynamic> matrix8,Eigen::Matrix<float,Dynamic,Dynamic> matrix9,Eigen::Matrix<float,Dynamic,Dynamic> matrix10)
+{
+    ofstream myfile;
 
-#endif /* SRC_GEOMETRIA3D_H_ */
+          myfile.open ("Matrixes.txt");
+          myfile << "Matrix1=[" << matrix1 << " ]" << endl;
+          myfile << "Matrix2=[" << matrix2 << " ]" << endl;
+          myfile << "Matrix3=[" << matrix3 << " ]" << endl;
+          myfile << "Matrix4=[" << matrix4 << " ]" << endl;
+          myfile << "Matrix5=[" << matrix5 << " ]" << endl;
+          myfile << "Matrix6=[" << matrix6 << " ]" << endl;
+          myfile << "Matrix7=[" << matrix7 << " ]" << endl;
+          myfile << "Matrix8=[" << matrix8 << " ]" << endl;
+          myfile << "Matrix9=[" << matrix9 << " ]" << endl;
+          myfile << "Matrix10=[" << matrix10 << " ]" << endl;
+    myfile.close();
+}
+#endif // GEOMETRIA3D_H
