@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
         }
 
         //Añade la imagen im al vector v_img
-//		resize(im, im, Size(), 0.25, 0.25);
+        resize(im, im, Size(), 0.25, 0.25);
         v_im.push_back(im);
 
         //Obtiene los puntos caracteristicos de cada una de las
@@ -177,18 +177,17 @@ int main(int argc, char* argv[]) {
     Mat points4Da, points4Db;
 
     //Triangulation of points
-    int num_comb = (num_tot_im-1)*(num_tot_im/2);
+    int num_comb = (num_tot_im-1)*(num_tot_im)/2;
     MatrixXf A_eigen(4,4), B_eigen(4,4), C_eigen(4,4), D_eigen(4,4);
     Mat A, B, C, D;
     vector<Mat> triangulation;
-    int X,Z;
-    X=0;
+    int acumulador,Z,E,cte;
+    acumulador=0;
+    E=2;
     Z=num_tot_im-1;
     int P=0;
-    for(int y = 0; y < num_comb; y ++)
+   for(int y = 0; y < num_comb; y ++)
     {
-        X=Z;
-        Z=(num_tot_im-y)+Z;
         if(y < num_tot_im-1)
         {
             A_eigen = Tintrinsic;
@@ -200,23 +199,29 @@ int main(int argc, char* argv[]) {
             triangulatePoints(A, B, objects[y], scenes[y], points4Da);
             triangulation.push_back(points4Da);
         }
-        else
+        if(y>=num_tot_im-1)
         {
-            do
-            {
-            A_eigen = Tintrinsic*transf_eigen[P];
-            B_eigen = Tintrinsic*transf_eigen[y]*transf_eigen[P];
-            A_eigen.conservativeResize(3,4);
-            B_eigen.conservativeResize(3,4);
-            eigen2cv(A_eigen,A);
-            eigen2cv(B_eigen,B);
-            triangulatePoints(A, B, objects[y], scenes[y], points4Da);
-            triangulation.push_back(points4Da);
-            }while (y>=X && y<Z);
-            P=P+1;
+            acumulador=Z;
+            Z=(num_tot_im-E)+Z;
+            do{
+                A_eigen = Tintrinsic*transf_eigen[P];
+                B_eigen = Tintrinsic*transf_eigen[y]*transf_eigen[P];
+                A_eigen.conservativeResize(3,4);
+                B_eigen.conservativeResize(3,4);
+                eigen2cv(A_eigen,A);
+                eigen2cv(B_eigen,B);
+                triangulatePoints(A, B, objects[y], scenes[y], points4Da);
+                triangulation.push_back(points4Da);
+                cout<<"comprobacion: "<<y<<"/número:"<<Z<<"/acumulador:"<<acumulador<<"//"<<P<<endl;
+                y++;
+                cte++;
+                }while (y>=acumulador && y<Z && cte!=(Z-acumulador));
+        P++;
+        E++;
+        cte=0;
         }
-
-    }
+        cout<<"comprobacion3: "<<y<<"/número:"<<Z<<"/acumulador:"<<acumulador<<"//"<<P<<endl;
+      }
 
             Eigen::Matrix<float,Dynamic,Dynamic> change;
             vector < Mat/*rixXf*/> points3D;
