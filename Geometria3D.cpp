@@ -1,272 +1,241 @@
-#include <opencv2/opencv.hpp>
-#include <opencv2/features2d.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/calib3d.hpp>
-#include <opencv2/xfeatures2d.hpp>
-#include <vector>
-#include <iostream>
-#include <Dense>
-#include <opencv2/core/eigen.hpp>
-#include "Geometria3D.h"
-#include "txtcreate.h"
+/*
+ * StructureFromMotion.cpp
+ *
+ *  Created on: 14 ene. 2017
+ *
+ */
 
-using namespace std;
-using namespace cv;
-using namespace cv::xfeatures2d;
-using namespace Eigen;
 
+#include "geometria3d.h"
+
+
+struct CloudPoint {
+    cv::Point3d pt;
+    std::vector<int>index_of_2d_origin;
+};
 
 int main(int argc, char* argv[]) {
-	Mat intrinsic = (Mat_<double>(3,3) << 2918.173910427262, 0, 1224.577959082814,
-			0, 2712.285042743833, 1598.890793819125,
-			0, 0, 1);
-	Mat distortion =(Mat_<double>(1,5) << 0.1063833678903079, -0.3218427230614517, 0.001458832745731512, 0.0006713282326283284, 0.3293767665489676);
-	Matrix4f Tintrinsic;
-	Tintrinsic << 2918.173910427262, 0, 1224.577959082814,0,
-			0, 2712.285042743833, 1598.890793819125,0,
-			0, 0, 1, 0,
-			0, 0, 0, 1;
-	vector<Mat> v_im;
-	vector<vector<KeyPoint> > v_keypoints;
-	vector<Mat> v_descriptors;
-	Mat im;
-	vector<KeyPoint> kp;
-	Mat dp;
-	vector<Matrix4f> transfEigen;
-	Mat zeros = (Mat_<double>(3, 1) << 0, 0, 0);
-	Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
 
-	String nombre1 = "/media/datos/irenerrrd/Dropbox/MovilCalib/im";
-//	String nombre1 = "/media/datos/irenerrrd/Dropbox/Movil_calib/bodegon/im";
-//	String nombre1 = "/media/datos/irenerrrd/Dropbox/Movil_calib/Biblio/im";
-//		String nombre1 = "/home/irenerrrd/GitHub/Images/im";
-
-	int num_tot_im = 5;
-	String nombre2 = ".jpg";
-
-	//	int minHessian = 500;
-	Ptr<SIFT> detector = SIFT::create(0);
-
-	//Lee las imagenes y las almacena en v_im
-	for (int i = 1; i <= num_tot_im; i++){
-		stringstream ss;
-		ss << i;
-
-		String nombre = nombre1 + ss.str() + nombre2;
-		cout << "Leida " << nombre << endl;
-		im = imread(nombre, CV_LOAD_IMAGE_COLOR);
-		if(!im.data){
-			cout << "error loading image" << endl;
-			return 1;
-		}
-
-		//Añade la imagen im al vector v_img
-//		resize(im, im, Size(), 0.25, 0.25);
-		v_im.push_back(im);
-
-		//Obtiene los puntos caracteristicos de cada una de las
-		//imagenes y los almacena en v_keypoints y v_descriptors
-		detector->detect(im, kp);
-		detector->compute(im, kp, dp);
-		v_keypoints.push_back(kp);
-		v_descriptors.push_back(dp);
-
-		//-- Draw keypoints
-//		Mat im_keypoints;
-//		drawKeypoints(im, kp, im_keypoints, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
-//		//-- Show detected (drawn) keypoints
-//		imshow("Detected keypoints", im_keypoints);
-//		waitKey(0);
-	}
-
-	cout << "Pulsa cualquier tecla" << endl;
-	waitKey(10);
-	vector<Mat> transf;
-	vector<Matrix4f> transf_eigen;
-	vector<vector<Point2f> > objects;
-	vector<vector<Point2f> > scenes;
+    vector<CloudPoint> todos_los_puntos_en_3D;
 
 
-	//Repasa todas las posibles combinaciones de imagenes
-	for (int i = 0; i < num_tot_im - 1; i++){
-		for (int j = i + 1; j < num_tot_im; j++){
-			cout << "Imagen " << i+1 << " con Imagen " << j+1 << endl;
+    Mat intrinsic = (Mat_<double>(3,3) << 2918.173910427262, 0, 1224.577959082814,
+            0, 2712.285042743833, 1598.890793819125,
+            0, 0, 1);
+    double focal = intrinsic.at<double>(0, 0);
+    cv::Point2d pp(intrinsic.at<double>(0, 2), intrinsic.at<double>(1, 2));
+    Mat distortion =(Mat_<double>(1,5) << 0.1063833678903079, -0.3218427230614517, 0.001458832745731512, 0.0006713282326283284, 0.3293767665489676);
 
-			BFMatcher matcher(NORM_L2,false);
-			vector<vector< DMatch > > matches;
-			matcher.knnMatch(v_descriptors[i], v_descriptors[j], matches, 2);
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * INICIO DE LA SECCIÓN 1 DEL CODIGO
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    vector<Mat> v_im;
+    vector<vector<KeyPoint> > v_keypoints;
+    vector<Mat> v_descriptors;
 
-			vector<DMatch > Best_Matches;
-			for(int k = 0; k < (int)matches.size(); k++){
+    Mat im;
+    vector<KeyPoint> kp;
+    Mat dp;
+    vector<Matrix4f> transfEigen;
+    Mat zeros = (Mat_<double>(3, 1) << 0, 0, 0);
+    Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
 
-				float dis1 = matches[k][0].distance ;
-				float dis2 = matches[k][1].distance ;
-				//				cout << dis1 << " " << dis2 << " --- ";
-				if( (dis1 < 400.0 && dis1 > 0) || (dis2 < 400.0 && dis2 > 0) ){			//distancia pequeña entre imagen1 e imagen2[0] e imagen2[1]
-					if (  dis2 / dis1 > 1.5){		//la diferencia de distancias es grande, por tanto una de ellas sera buena
-						Best_Matches.push_back(matches[k][0]);
-					}
-				}
-			}
-//			Mat im_matches;
-//			drawMatches( v_im[i], v_keypoints[i], v_im[j], v_keypoints[j], Best_Matches, im_matches,
-//					Scalar::all(-1),Scalar::all(-1),vector<char>(),
-//					DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-//			resize(im_matches, im_matches, Size(), 0.15, 0.15);
-//			imshow("knnMatches", im_matches);
-//			waitKey(0);
+    String nombre1 = "/home/pelayo/Documentos/Images/venga/im";
+    String nombre2 = ".jpg";
 
-			vector<Point2f> obj;
-			vector<Point2f> scene;
-			cv::RNG rng(0);
+    int num_tot_im = 5;
 
-			for( int l = 0; l < (int)Best_Matches.size(); l++ ){
-				//-- Get the keypoints from the good matches
-				cv::Scalar color(rng(256),rng(256),rng(256));
+    //	int minHessian = 500;
+    Ptr<SIFT> detector = SIFT::create(0);
 
-				obj.push_back( v_keypoints[i][ Best_Matches[l].queryIdx ].pt );
-				scene.push_back( v_keypoints[j][ Best_Matches[l].trainIdx ].pt );
-			}
+    //Lee las imagenes y las almacena en v_im
+    //Y obtiene los keypoints y sus descriptores y los almacena en v_keypoints y v_descriptors
+    for (int i = 1; i <= num_tot_im; i++){
+        stringstream ss;
+        ss << i;
 
-			objects.push_back(obj);
-			scenes.push_back(scene);
+        String nombre = nombre1 + ss.str() + nombre2;
+        cout << "Leida " << nombre << endl;
+        im = imread(nombre, CV_LOAD_IMAGE_COLOR);
+        if(!im.data){
+            cout << "error loading image" << endl;
+            return 1;
+        }
 
-//			Mat mask_inliers_f;
-//			Mat F = findFundamentalMat(obj, scene, CV_FM_RANSAC, 1, 0.999, mask_inliers_f);
-//			cout << "Calculada matriz fundamental: " << F << endl;
-//			Mat im_matches_fund;
-//			drawMatches(v_im[i], v_keypoints[i], v_im[j], v_keypoints[j], Best_Matches, im_matches_fund,
-//					Scalar::all(-1),Scalar::all(-1), mask_inliers_f,
-//					DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-//			imshow("F Matches", im_matches_fund);
-//			cout << "Matches dibujados" << endl;
-//			waitKey(0);
-//			String title = "Lineas epipolares";
-//			Matx33d Fx((double*)F.ptr());
-//			cout << "Fx:" << Fx << endl << "F:" << F << endl;
-//			drawEpipolarLines(title , Fx, v_im[i], v_im[j], obj, scene, (float)1.0);
+        //Añade la imagen im al vector v_img
+        resize(im, im, Size(), 0.25, 0.25);
+        v_im.push_back(im);
 
-			double focal = intrinsic.at<double>(0, 0);
-			cv::Point2d pp(intrinsic.at<double>(0, 2), intrinsic.at<double>(1, 2));
-			Mat E, R, t, mask;
-			undistortPoints(obj, obj, intrinsic, distortion, noArray(), intrinsic);
-			undistortPoints(scene, scene, intrinsic, distortion, noArray(), intrinsic);
-			E = findEssentialMat(obj, scene, focal, pp, RANSAC, 0.9, 3.0, mask);
-			correctMatches(E, obj, scene, obj, scene);
-			recoverPose(E, obj, scene, R, t, focal, pp, mask);
-			Mat im_matches_e;
+        //Obtiene los puntos caracteristicos de cada una de las
+        //imagenes y los almacena en v_keypoints y v_descriptors
+        detector->detect(im, kp);
+        detector->compute(im, kp, dp);
+        v_keypoints.push_back(kp);
+        v_descriptors.push_back(dp);
+    }
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * FIN DE LA SECCIÓN 1 DEL CODIGO
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-			drawMatches( v_im[i], v_keypoints[i], v_im[j], v_keypoints[j], Best_Matches, im_matches_e,
-					Scalar::all(-1),Scalar::all(-1), mask,
-					DrawMatchesFlags::DRAW_RICH_KEYPOINTS|DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-			resize(im_matches_e, im_matches_e, Size(), 0.25, 0.25);
-			imshow("E Matches", im_matches_e);
-			waitKey(0);
+    vector<Mat> transf;
+    vector<vector<Point2d> > objects;
+    vector<vector<Point2d> > scenes;
 
-			Mat tran;
-			hconcat(R,t,tran);
-			Mat tran1;
-			vconcat(tran, bottom, tran1);
-			Matrix4f tran_eigen;
-			cv2eigen(tran1,tran_eigen);
-			transf.push_back(tran);
-			transf_eigen.push_back(tran_eigen);
-		}
-	}
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * INICIO DE LA SECCIÓN 2 DEL CODIGO
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+    //Obtención de los puntos 3D entre las dos primeras imágenes
+    cout << "Imagen " << 1 << " con Imagen " << 2 << endl;
 
-	Mat points4Da, points4Db;
+    vector<Point2d> obj, scene;
+    vector<int> obj_idx, scene_idx;
+    obtainMatches(v_keypoints[0], v_keypoints[1], v_descriptors[0], v_descriptors[1], obj, scene, obj_idx, scene_idx);
+    objects.push_back(obj);
+    scenes.push_back(scene);
 
-	//Triangulation of points
-	int num_comb = 10;
-	MatrixXf A_eigen(4,4), B_eigen(4,4), C_eigen(4,4), D_eigen(4,4);
-	Mat A, B, C, D;
-	vector<Mat> triangulation;
+  //Obtención de la matriz esencial y de la matrix de transformación entre las dos cámaras
+    Mat E, R,t, mask;
+    undistortPoints(obj, obj, intrinsic, distortion, noArray(), intrinsic);
+    undistortPoints(scene, scene, intrinsic, distortion, noArray(), intrinsic);
+    E = findEssentialMat(obj, scene, focal, pp, RANSAC, 0.9, 3.0, mask);
+/*    SVD svd(E);
+    Matx33d W(0,-1,0,//HZ 9.13
+              1,0,0,
+              0,0,1);
+    Mat_<double> R = svd.u * Mat(W) * svd.vt; //HZ 9.19
+    Mat_<double> t = svd.u.col(2); //u3
+    Matx34d P1( R(0,0),R(0,1), R(0,2), t(0),
+    R(1,0),R(1,1), R(1,2), t(1),
+    R(2,0),R(2,1), R(2,2), t(2));
+*/
+    correctMatches(E, obj, scene, obj, scene);
+    recoverPose(E, obj, scene, R, t, focal, pp, mask);
+   Mat im_matches_e;
 
-	for(int y = 0; y < num_comb; y ++)
-	{
-		if(y < 4)
-		{
-			A_eigen = Tintrinsic;
-			B_eigen = Tintrinsic*transf_eigen[y];
-			A_eigen.conservativeResize(3,4);
-			B_eigen.conservativeResize(3,4);
-			eigen2cv(A_eigen,A);
-			eigen2cv(B_eigen,B);
-			triangulatePoints(A, B, objects[y], scenes[y], points4Da);
-			triangulation.push_back(points4Da);
-		}
-		if(y >= 4 && y < 7)
-		{
-			A_eigen = Tintrinsic*transf_eigen[0];
-			B_eigen = Tintrinsic*transf_eigen[y]*transf_eigen[0];
-			A_eigen.conservativeResize(3,4);
-			B_eigen.conservativeResize(3,4);
-			eigen2cv(A_eigen,A);
-			eigen2cv(B_eigen,B);
-			triangulatePoints(A, B, objects[y], scenes[y], points4Da);
-			triangulation.push_back(points4Da);
-		}
-		if(y >= 7 && y < 9)
-		{
-			A_eigen = Tintrinsic*transf_eigen[1];
-			B_eigen = Tintrinsic*transf_eigen[y]*transf_eigen[1];
-			A_eigen.conservativeResize(3,4);
-			B_eigen.conservativeResize(3,4);
-			eigen2cv(A_eigen,A);
-			eigen2cv(B_eigen,B);
-			triangulatePoints(A, B, objects[y], scenes[y], points4Da);
-			triangulation.push_back(points4Da);
-		}
-		if(y == 9)
-		{
-			A_eigen = Tintrinsic*transf_eigen[2];
-			B_eigen = Tintrinsic*transf_eigen[y]*transf_eigen[2];
-			A_eigen.conservativeResize(3,4);
-			B_eigen.conservativeResize(3,4);
-			eigen2cv(A_eigen,A);
-			eigen2cv(B_eigen,B);
-			triangulatePoints(A, B, objects[y], scenes[y], points4Da);
-			triangulation.push_back(points4Da);
-		}
+    //En good_obj y good_scene se almacenan unicamente los puntos inliers
+    vector<Point2d> good_scene, good_obj;
+    vector<int> good_obj_idx, good_scene_idx;
+    for (int b = 0; b < (int)obj.size(); b++){
+        if (mask.at<uchar>(b) == 1){
+            good_scene.push_back(scene[b]);
+            good_scene_idx.push_back(scene_idx[b]);
 
-	}
+            good_obj.push_back(obj[b]);
+            good_obj_idx.push_back(obj_idx[b]);
+        }
+    }
 
-		    Eigen::Matrix<float,Dynamic,Dynamic> change;
-		    vector < Mat/*rixXf*/> points3D;
-		    for(int t = 0; t < num_comb; t++)
-		    {
-		        cv2eigen(triangulation[t],change);
-		        MatrixXf mA((triangulation[t].rows -1), triangulation[t].cols);
-		        for ( int b = 0; b < triangulation[t].cols; b++)
-		        {
-		           if (change(3,b)== 0){
-		               mA(0,b)= change(0,b);
-		               mA(1,b)= change(1,b);
-		               mA(2,b)= change(2,b);
-		           }
-		           else
-		           {
-		               mA(0,b)= change(0,b)/change(3,b);
-		               mA(1,b)= change(1,b)/change(3,b);
-		               mA(2,b)= change(2,b)/change(3,b);
-		           }
-		        }
-		        Mat mA_mat;
-		        eigen2cv(mA, mA_mat);
-		        points3D.push_back(mA_mat);
-		    }
+    //Obtención de los puntos en 3D
+    Mat tran, tran1, points4D, A, B;
 
-	ofstream myfile;
-	myfile.open ("Matrixes2.txt");
-	for (int i = 0; i < (int)triangulation.size(); i++){
-		myfile << "T" << i << "= " << transf[i] << endl;
-		myfile << "p" << i << "= " << points3D[i] << endl << endl;
-	}
-	myfile.close();
+    hconcat(R,t,tran);
+    hconcat(intrinsic, zeros, tran1);
+    A = tran1;
+    B = intrinsic*tran;
 
-	waitKey(0);
-	destroyAllWindows();
+    triangulatePoints(A, B, good_obj, good_scene, points4D);
+    vector<Point3d> PointCloud;
+    convertHomogeneous(points4D, PointCloud);
 
-	return(0);
+    //Creación de la nube de puntos 3D inicial
+    for (int i = 0; i < points4D.cols; i++){
+        CloudPoint point;
+
+        point.pt = PointCloud[i];
+
+        vector<int> indices (2, 0); //Solo se tiene un par de imágenes por lo que habrá que el vector tiene que corresponderse unicamente a estas dos imágenes
+        indices[0] = good_obj_idx[i];
+        indices[1] = good_scene_idx[i];
+        point.index_of_2d_origin = indices;
+
+        todos_los_puntos_en_3D.push_back(point);
+    }
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * FIN DE LA SECCIÓN 2 DEL CODIGO
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * INICIO DE LA SECCIÓN 3 DEL CODIGO
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
+
+
+
+
+    //for(int i = 0; i < num_tot_im-2; i++)
+    //{
+
+    //Obtención de los keypoints y descriptors de la nube de puntos anterior
+
+    vector<KeyPoint> keypoint3d;
+    KeyPoint key3d;
+    Mat descriptors3d;
+    int posicion;
+
+        for(unsigned int j = 0; j < todos_los_puntos_en_3D.size(); j ++)
+        {   posicion = todos_los_puntos_en_3D[j].index_of_2d_origin[0];
+            //cout<< v_descriptors[0].row(posicion)<< endl;
+            descriptors3d.push_back(v_descriptors[0].row(posicion));
+            key3d = v_keypoints[0][posicion];
+            keypoint3d.push_back(key3d);
+        }
+
+        //Obtención de los puntos característicos y descriptors a través del matcheado entre la nube de puntos anterior y la imagen actual
+        vector<Point2d> obj_new, scene_new;
+        vector<int> obj_idx_new, scene_idx_new;
+        obtainMatches(keypoint3d, v_keypoints[2], descriptors3d, v_descriptors[2], obj_new, scene_new, obj_idx_new, scene_idx_new);
+
+        //Obtener R y t de la cámara a través de la PnPRansac
+
+        Mat rvec, tvec;
+        vector<Point3d> pnpPointcloud_valid;
+        Point3d  punto;
+
+        for(unsigned int j = 0; j < obj_idx_new.size(); j ++)
+        {
+            punto = todos_los_puntos_en_3D[obj_idx_new[j]].pt;
+            pnpPointcloud_valid.push_back(punto);
+        }
+
+        solvePnPRansac(pnpPointcloud_valid, scene_new, intrinsic, distortion, rvec, tvec);
+
+        //Convertir de formato Rodrigues a matriz de rotación y construir la matriz de Transformación 3x4
+
+        Mat r_mat;
+        Rodrigues(rvec,r_mat);
+        hconcat(R,t,tran);
+
+        //
+
+    //}
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * FIN DE LA SECCIÓN 3 DEL CODIGO
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //	waitKey(0);
+    destroyAllWindows();
+
+    return(0);
 }
 
