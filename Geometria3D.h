@@ -135,7 +135,9 @@ void convertHomogeneous(Mat point4D, vector<Point3d> & point3D){
     }
 }
 
-void obtainMatches(vector<KeyPoint> kp1, vector<KeyPoint> kp2, Mat descriptors1, Mat descriptors2, vector<Point2d> & points1, vector<Point2d> & points2, vector<int> & points1_idx, vector<int> & points2_idx){
+void obtainMatches(vector<KeyPoint> & kp1, vector<KeyPoint> & kp2, Mat & descriptors1, Mat & descriptors2, vector<Point2d> & points1, vector<Point2d> & points2, vector<int> & points1_idx, vector<int> & points2_idx){
+//	cout << "d1 = " << descriptors1 << endl;
+//	cout << "d2 = " << descriptors2 << endl;
 
     BFMatcher matcher(NORM_L2,false);
     vector<vector< DMatch > > matches;
@@ -146,8 +148,8 @@ void obtainMatches(vector<KeyPoint> kp1, vector<KeyPoint> kp2, Mat descriptors1,
 
         float dis1 = matches[k][0].distance ;
         float dis2 = matches[k][1].distance ;
-        //				cout << dis1 << " " << dis2 << " --- ";
-        if( (dis1 < 400.0 && dis1 > 0) || (dis2 < 400.0 && dis2 > 0) ){			//distancia pequeña entre imagen1 e imagen2[0] e imagen2[1]
+//        cout << dis1 << " " << dis2 << " --- ";
+        if( (dis1 < 300.0 && dis1 > 0) || (dis2 < 300.0 && dis2 > 0) ){			//distancia pequeña entre imagen1 e imagen2[0] e imagen2[1]
             if (  dis2 / dis1 > 1.5){		//la diferencia de distancias es grande, por tanto una de ellas sera buena
                 Best_Matches.push_back(matches[k][0]);
             }
