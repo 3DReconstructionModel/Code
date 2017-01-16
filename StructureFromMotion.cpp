@@ -11,6 +11,7 @@
 struct CloudPoint {
     cv::Point3d pt;
     std::vector<int>index_of_2d_origin;
+    float color;
 };
 
 int main(int argc, char* argv[]) {
@@ -75,7 +76,7 @@ int main(int argc, char* argv[]) {
         }
 
         //Añade la imagen im al vector v_img
-        //resize(im, im, Size(), 0.25, 0.25);
+//        resize(im, im, Size(), 0.25, 0.25);
         v_im.push_back(im);
 
         //Obtiene los puntos caracteristicos de cada una de las
@@ -96,16 +97,8 @@ int main(int argc, char* argv[]) {
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
      * INICIO DE LA SECCIÓN 2 DEL CODIGO
      * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-    //Obtención de los puntos 3D entre las dos primeras imágenes
-    cout << "Imagen " << 1 << " con Imagen " << 2 << endl;
+//Obtención de los puntos 3D entre las dos primeras imágenes
 
-//	vector<Point2d> obj, scene;
-//	vector<int> obj_idx, scene_idx;
-//	obtainMatches(v_keypoints[0], v_keypoints[1], v_descriptors[0], v_descriptors[1], obj, scene, obj_idx, scene_idx);
-//	objects.push_back(obj);
-//	scenes.push_back(scene);
-
-//	myfile.open("matches.txt");
 
     // Hace todos los matches entre pares de imagenes y elimina los outliers
     for (int l = 0; l < num_tot_im - 1; l++){
@@ -137,10 +130,7 @@ int main(int argc, char* argv[]) {
 
     //Obtención de la matriz esencial y de la matrix de transformación entre las dos cámaras
     Mat E, R, t, mask;
-    //	undistortPoints(obj, obj, intrinsic, distortion, noArray(), intrinsic);
-    //	undistortPoints(scene, scene, intrinsic, distortion, noArray(), intrinsic);
     E = findEssentialMat(good_objects[0], good_scenes[0], focal, pp, RANSAC, 0.9, 3.0, mask);
-    //	correctMatches(E, obj, scene, obj, scene);
     recoverPose(E, good_objects[0], good_scenes[0], R, t, focal, pp, mask);
 //	Mat im_matches_e;
 
@@ -169,6 +159,13 @@ int main(int argc, char* argv[]) {
         indices[1] = good_scenes_idx[0][i];
         point.index_of_2d_origin = indices;
 
+        Vec3b color = v_im[0].at<Vec3b>(Point(good_objects[0][i].x,good_objects[0][i].y));
+        uint8_t r = (uint8_t)color.val[2];
+        uint8_t g = (uint8_t)color.val[1];
+        uint8_t b = (uint8_t)color.val[0];
+        uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+        point.color = *reinterpret_cast<float*>(&rgb);
+
         todos_los_puntos_en_3D.push_back(point);
     }
 
@@ -194,10 +191,6 @@ int main(int argc, char* argv[]) {
         KeyPoint key3d;
         Mat descriptors3d;
         int posicion;
-        //		cout << "A" << endl;
-        //		cout <<"size"<< puntos_en_3D_anteriores.size() << endl;
-        //		cout << "puntos3danteriores = " << puntos_en_3D_anteriores.size() << endl
-        //				<< "v_descriptors = " << v_descriptors.size() << endl;
 
         for(unsigned int j = 0; j < puntos_en_3D_anteriores.size(); j ++){
             //			cout << i << ", " << j << endl;
@@ -213,11 +206,9 @@ int main(int argc, char* argv[]) {
 
         vector<Point2d> obj_new, scene_new;
         vector<int> obj_idx_new, scene_idx_new;
-        //		cout << "D" << endl;
         obtainMatches(keypoint3d, v_keypoints[i], descriptors3d, v_descriptors[i], obj_new, scene_new, obj_idx_new, scene_idx_new);
-        //		cout << "E " << obj_new.size() << endl;
-        //Obtener R y t de la cámara a través de la PnPRansac
 
+        //Obtener R y t de la cámara a través de la PnPRansac
         Mat rvec, tvec;
         vector<Point3d> pnpPointcloud_valid;
         Point3d  punto;
@@ -266,6 +257,13 @@ int main(int argc, char* argv[]) {
 //				cout << point.pt <<  " [" << indices[0] << ", " << indices[1] << ", " << indices[2] << ", " << indices[3] << ", " << indices[4] << "]" << endl;
                 point.index_of_2d_origin = indices;
 
+                Vec3b color = v_im[i-1].at<Vec3b>(Point(good_objects[i-1][j].x,good_objects[i-1][j].y));
+                uint8_t r = (uint8_t)color.val[2];
+                uint8_t g = (uint8_t)color.val[1];
+                uint8_t b = (uint8_t)color.val[0];
+                uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+                point.color = *reinterpret_cast<float*>(&rgb);
+
                 todos_los_puntos_en_3D.push_back(point);
                 puntos_en_3D_anteriores.push_back(point);
             }
@@ -282,16 +280,15 @@ int main(int argc, char* argv[]) {
      * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
     //Creación de la nube de puntos, formato PCD
-
     myfile.close();
     ofstream myfile1;
     myfile1.open("table_scene_lms400.pcd");
     myfile1 << "# .PCD v0.7 - Point Cloud Data file format" << endl;
     myfile1 << "VERSION 0.7" << endl;
-    myfile1 << "FIELDS x y z" << endl;
-    myfile1 << "SIZE 4 4 4" << endl;
-    myfile1 << "TYPE F F F" << endl;
-    myfile1 << "COUNT 1 1 1" <<  endl;
+    myfile1 << "FIELDS x y z rgb" << endl;
+    myfile1 << "SIZE 4 4 4 4" << endl;
+    myfile1 << "TYPE F F F F" << endl;
+    myfile1 << "COUNT 1 1 1 1" <<  endl;
     myfile1 << "WIDTH " << todos_los_puntos_en_3D.size() << endl;
     myfile1 << "HEIGHT 1" << endl;
     myfile1 << "VIEWPOINT 0 0 0 1 0 0 0" << endl;
@@ -299,7 +296,7 @@ int main(int argc, char* argv[]) {
     myfile1 << "DATA ascii" << endl;
     for(int u = 0; u < (int)todos_los_puntos_en_3D.size(); u++)
     {
-        myfile1 << todos_los_puntos_en_3D[u].pt.x << " " << todos_los_puntos_en_3D[u].pt.y <<" "<< todos_los_puntos_en_3D[u].pt.z <<   endl;
+        myfile1 << todos_los_puntos_en_3D[u].pt.x << " " << todos_los_puntos_en_3D[u].pt.y <<" "<< todos_los_puntos_en_3D[u].pt.z << " " << todos_los_puntos_en_3D[u].color << endl;
     }
     myfile1.close();
     cout << todos_los_puntos_en_3D.size() << endl;
