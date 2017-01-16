@@ -19,6 +19,7 @@ int main(int argc, char* argv[]) {
     myfile.open("confor.txt");
 
     vector<CloudPoint> todos_los_puntos_en_3D;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr point_cloud_ptr (new pcl::PointCloud<pcl::PointXYZRGB>);
 
 
     Mat intrinsic = (Mat_<double>(3,3) << 2759.48, 0, 1520.69, 0, 2764.16, 1006.81, 0, 0, 1);
@@ -97,9 +98,7 @@ int main(int argc, char* argv[]) {
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
      * INICIO DE LA SECCIÓN 2 DEL CODIGO
      * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-//Obtención de los puntos 3D entre las dos primeras imágenes
-
-
+    //Obtención de los puntos 3D entre las dos primeras imágenes
     // Hace todos los matches entre pares de imagenes y elimina los outliers
     for (int l = 0; l < num_tot_im - 1; l++){
         vector<Point2d> obj, scene;
@@ -132,7 +131,6 @@ int main(int argc, char* argv[]) {
     Mat E, R, t, mask;
     E = findEssentialMat(good_objects[0], good_scenes[0], focal, pp, RANSAC, 0.9, 3.0, mask);
     recoverPose(E, good_objects[0], good_scenes[0], R, t, focal, pp, mask);
-//	Mat im_matches_e;
 
 
     //Obtención de los puntos en 3D
@@ -151,8 +149,12 @@ int main(int argc, char* argv[]) {
     //Creación de la nube de puntos 3D inicial
     for (int i = 0; i < points4D.cols; i++){
         CloudPoint point;
+	    pcl::PointXYZRGB point_pcl;
 
         point.pt = PointCloud[i];
+        point_pcl.x = point.pt.x;
+        point_pcl.y = point.pt.y;
+        point_pcl.z = point.pt.z;
 
         vector<int> indices (num_tot_im, 0);
         indices[0] = good_objects_idx[0][i];
@@ -164,9 +166,11 @@ int main(int argc, char* argv[]) {
         uint8_t g = (uint8_t)color.val[1];
         uint8_t b = (uint8_t)color.val[0];
         uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+        point_pcl.rgb = *reinterpret_cast<float*>(&rgb);
         point.color = *reinterpret_cast<float*>(&rgb);
 
         todos_los_puntos_en_3D.push_back(point);
+        point_cloud_ptr->push_back(point_pcl);
     }
 
     myfile << "points1 = [";
@@ -248,8 +252,12 @@ int main(int argc, char* argv[]) {
                     && (good_scenes_idx[i-1][j] >= 0)){
 
                 CloudPoint point;
+        	    pcl::PointXYZRGB point_pcl;
 
                 point.pt = new_PointCloud[j];
+                point_pcl.x = point.pt.x;
+                point_pcl.y = point.pt.y;
+                point_pcl.z = point.pt.z;
 
                 vector<int> indices (num_tot_im, 0); //Solo se tiene un par de imágenes por lo que habrá que el vector tiene que corresponderse unicamente a estas dos imágenes
                 indices[i-1] = good_objects_idx[i-1][j];
@@ -263,9 +271,12 @@ int main(int argc, char* argv[]) {
                 uint8_t b = (uint8_t)color.val[0];
                 uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
                 point.color = *reinterpret_cast<float*>(&rgb);
+                point_pcl.rgb = *reinterpret_cast<float*>(&rgb);
 
                 todos_los_puntos_en_3D.push_back(point);
                 puntos_en_3D_anteriores.push_back(point);
+                point_cloud_ptr->push_back(point_pcl);
+
             }
         }
         myfile << "points" << i << " = [";
@@ -279,31 +290,13 @@ int main(int argc, char* argv[]) {
      * FIN DE LA SECCIÓN 3 DEL CODIGO
      * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-    //Creación de la nube de puntos, formato PCD
-    myfile.close();
-    ofstream myfile1;
-    myfile1.open("table_scene_lms400.pcd");
-    myfile1 << "# .PCD v0.7 - Point Cloud Data file format" << endl;
-    myfile1 << "VERSION 0.7" << endl;
-    myfile1 << "FIELDS x y z rgb" << endl;
-    myfile1 << "SIZE 4 4 4 4" << endl;
-    myfile1 << "TYPE F F F F" << endl;
-    myfile1 << "COUNT 1 1 1 1" <<  endl;
-    myfile1 << "WIDTH " << todos_los_puntos_en_3D.size() << endl;
-    myfile1 << "HEIGHT 1" << endl;
-    myfile1 << "VIEWPOINT 0 0 0 1 0 0 0" << endl;
-    myfile1 << "POINTS " << todos_los_puntos_en_3D.size() << endl;
-    myfile1 << "DATA ascii" << endl;
-    for(int u = 0; u < (int)todos_los_puntos_en_3D.size(); u++)
-    {
-        myfile1 << todos_los_puntos_en_3D[u].pt.x << " " << todos_los_puntos_en_3D[u].pt.y <<" "<< todos_los_puntos_en_3D[u].pt.z << " " << todos_los_puntos_en_3D[u].color << endl;
-    }
-    myfile1.close();
-    cout << todos_los_puntos_en_3D.size() << endl;
+    pcl::visualization::CloudViewer viewer("Cloud Viewer");
+   	viewer.showCloud(point_cloud_ptr);
+   	while(!viewer.wasStopped()){
 
-    //	waitKey(0);
+   	}
     destroyAllWindows();
 
     return(0);
-}
 
+}
