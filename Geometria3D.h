@@ -24,7 +24,6 @@
 #include <Dense>
 #include <opencv2/core/eigen.hpp>
 
-
 using namespace std;
 using namespace cv;
 using namespace cv::xfeatures2d;
@@ -158,18 +157,12 @@ void obtainMatches(vector<KeyPoint> kp1, vector<KeyPoint> kp2, Mat descriptors1,
     cv::RNG rng(0);
 
     for( int l = 0; l < (int)Best_Matches.size(); l++ ){
-        //-- Get the keypoints from the good matches
-        cv::Scalar color(rng(256),rng(256),rng(256));
-
         points1.push_back( kp1[ Best_Matches[l].queryIdx ].pt );
         points1_idx.push_back(Best_Matches[l].queryIdx);
-        //				obj_desc.push_back(v_descriptors[i][ Best_Matches[l].queryIdx ]);
+
         points2.push_back( kp2[ Best_Matches[l].trainIdx ].pt );
         points2_idx.push_back(Best_Matches[l].trainIdx);
-
-        //				scene_desc.push_back(v_descriptors[i][ Best_Matches[l].trainIdx ]);
     }
-
 }
 /*
 Mat_<double> LinearLSTriangulation(
