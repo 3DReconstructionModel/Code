@@ -16,6 +16,8 @@ struct CloudPoint {
 
 int main(int argc, char* argv[]) {
 	ofstream myfile;
+	myfile.open("confor.txt");
+
 	vector<CloudPoint> todos_los_puntos_en_3D;
 
 
@@ -34,6 +36,7 @@ int main(int argc, char* argv[]) {
 	vector<Mat> v_im;
 	vector<vector<KeyPoint> > v_keypoints;
 	vector<Mat> v_descriptors;
+	vector<Mat> v_transf;
 
 	Mat im;
 	vector<KeyPoint> kp;
@@ -42,10 +45,11 @@ int main(int argc, char* argv[]) {
 	Mat zeros = (Mat_<double>(3, 1) << 0, 0, 0);
 	Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
 
-	String nombre1 = "/home/irenerrrd/Descargas/images/im";
+//	String nombre1 = "/home/irenerrrd/Descargas/images/im";
+	String nombre1 = "/home/irenerrrd/Descargas/images/castle/im";
 	String nombre2 = ".png";
 
-	int num_tot_im = 11;
+	int num_tot_im = 10;
 
 	//	int minHessian = 500;
 	Ptr<SIFT> detector = SIFT::create(0);
@@ -142,6 +146,7 @@ int main(int argc, char* argv[]) {
 	hconcat(intrinsic, zeros, tran1);
 	A = tran1;
 	B = intrinsic*tran;
+	v_transf.push_back(B);
 
 	triangulatePoints(A, B, good_objects[0], good_scenes[0], points4D);
 	vector<Point3d> PointCloud;
@@ -161,6 +166,11 @@ int main(int argc, char* argv[]) {
 		todos_los_puntos_en_3D.push_back(point);
 	}
 
+	myfile << "points1 = [";
+	for (int k = 0; k < (int)todos_los_puntos_en_3D.size(); k++){
+		myfile << todos_los_puntos_en_3D[k].pt.x <<", "<< todos_los_puntos_en_3D[k].pt.y <<", "<< todos_los_puntos_en_3D[k].pt.z << endl;
+	}
+	myfile << "]" << endl;
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 	 * FIN DE LA SECCIÓN 2 DEL CODIGO
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -170,7 +180,6 @@ int main(int argc, char* argv[]) {
 	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 	vector<CloudPoint> puntos_en_3D_anteriores = todos_los_puntos_en_3D;
-	myfile.open("confor.txt");
 
 	//Obtención de los keypoints y descriptors de la nube de puntos anterior
 	for (int i = 2; i < num_tot_im - 1 /*num_pares_im*/; i++){
@@ -218,16 +227,17 @@ int main(int argc, char* argv[]) {
 
 		Mat r_mat;
 		Rodrigues(rvec,r_mat);
-		hconcat(R,t,tran);
+		hconcat(r_mat,tvec,tran);
 
 		//Triangulamos los puntos
-
+		B.release();
 		B = intrinsic*tran;
+		v_transf.push_back(B);
 
 		Mat new_points4D;
 		vector<Point3d> new_PointCloud;
 		cout << "Imagen " << i-1 << " con imagen " << i << ": " << good_objects[i-1].size() << endl;
-		triangulatePoints(A, B, good_objects[i-1], good_scenes[i-1], new_points4D);
+		triangulatePoints(v_transf[i-2], v_transf[i-1], good_objects[i-1], good_scenes[i-1], new_points4D);
 		//		cout << new_points4D << endl;
 		convertHomogeneous(new_points4D, new_PointCloud);
 
