@@ -5,8 +5,7 @@
  *      
  */
 
-
-#include "geometria3d.h"
+#include "Geometria3D.h"
 
 
 struct CloudPoint {
@@ -38,6 +37,11 @@ int main(int argc, char* argv[]) {
     vector<Mat> v_descriptors;
     vector<Mat> v_transf;
 
+    if (argc != 3){
+    		cout << "Error en el numero de argumentos de entrada" << endl;
+    		return -1;
+    	}
+
     Mat im;
     vector<KeyPoint> kp;
     Mat dp;
@@ -46,10 +50,12 @@ int main(int argc, char* argv[]) {
     Mat_<double> bottom = (cv::Mat_<double>(1, 4) << 0, 0, 0, 1);
 
 //	String nombre1 = "/home/irenerrrd/Descargas/images/im";
-    String nombre1 = "/home/pelayo/Documentos/Images/fountain_dense/urd/im";
+    String nombre0 = argv[2];
+    cout << "Carpeta: " << nombre0 << endl;
+    String nombre1 = "im";
     String nombre2 = ".png";
 
-    int num_tot_im = 10;
+    int num_tot_im = atoi(argv[1]);
 
     //	int minHessian = 500;
     Ptr<SIFT> detector = SIFT::create(0);
@@ -60,7 +66,7 @@ int main(int argc, char* argv[]) {
         stringstream ss;
         ss << i;
 
-        String nombre = nombre1 + ss.str() + nombre2;
+        String nombre = nombre0 + nombre1 + ss.str() + nombre2;
         cout << "Leida " << nombre << endl;
         im = imread(nombre, CV_LOAD_IMAGE_COLOR);
         if(!im.data){
@@ -291,7 +297,7 @@ int main(int argc, char* argv[]) {
     myfile1 << "VIEWPOINT 0 0 0 1 0 0 0" << endl;
     myfile1 << "POINTS " << todos_los_puntos_en_3D.size() << endl;
     myfile1 << "DATA ascii" << endl;
-    for(int u = 0; u < todos_los_puntos_en_3D.size(); u++)
+    for(int u = 0; u < (int)todos_los_puntos_en_3D.size(); u++)
     {
         myfile1 << todos_los_puntos_en_3D[u].pt.x << " " << todos_los_puntos_en_3D[u].pt.y <<" "<< todos_los_puntos_en_3D[u].pt.z <<   endl;
     }
