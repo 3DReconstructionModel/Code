@@ -2,7 +2,7 @@
  * Geometria3D.h
  *
  *  Created on: 20 dic. 2016
- *      Author: irenerrrd
+ *      
  */
 
 #ifndef SRC_GEOMETRIA3D_H_
