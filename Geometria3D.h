@@ -149,7 +149,7 @@ void obtainMatches(vector<KeyPoint> & kp1, vector<KeyPoint> & kp2, Mat & descrip
         float dis1 = matches[k][0].distance ;
         float dis2 = matches[k][1].distance ;
 //        cout << dis1 << " " << dis2 << " --- ";
-        if( (dis1 < 300.0 && dis1 > 0) || (dis2 < 300.0 && dis2 > 0) ){			//distancia pequeña entre imagen1 e imagen2[0] e imagen2[1]
+        if( (dis1 < 300.0 && dis1 > 0) || (dis2 < 300.0 && dis2 > 0) ){	//distancia pequeña entre imagen1 e imagen2[0] e imagen2[1]
             if (  dis2 / dis1 > 1.5){		//la diferencia de distancias es grande, por tanto una de ellas sera buena
                 Best_Matches.push_back(matches[k][0]);
             }
