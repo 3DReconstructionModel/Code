@@ -2,7 +2,7 @@
  * Geometria3D.h
  *
  *  Created on: 20 dic. 2016
- *   
+ *      Author: irenerrrd
  */
 
 #ifndef SRC_GEOMETRIA3D_H_
@@ -21,8 +21,26 @@
 #include <opencv2/xfeatures2d.hpp>
 #include <vector>
 #include <iostream>
-#include <Dense>
+#include <Eigen/Dense>
 #include <opencv2/core/eigen.hpp>
+
+#include <boost/thread/thread.hpp>
+
+//#define PCL_NO_PRECOMPILE
+#include <pcl/ModelCoefficients.h>
+#include <pcl/point_types.h>
+#include <pcl/common/common_headers.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
 
 using namespace std;
 using namespace cv;
@@ -135,7 +153,7 @@ void convertHomogeneous(Mat point4D, vector<Point3d> & point3D){
     }
 }
 
-void obtainMatches(vector<KeyPoint> & kp1, vector<KeyPoint> & kp2, Mat & descriptors1, Mat & descriptors2, vector<Point2d> & points1, vector<Point2d> & points2, vector<int> & points1_idx, vector<int> & points2_idx){
+void obtainMatches(Mat im1, Mat im2, vector<KeyPoint> & kp1, vector<KeyPoint> & kp2, Mat & descriptors1, Mat & descriptors2, vector<Point2d> & points1, vector<Point2d> & points2, vector<int> & points1_idx, vector<int> & points2_idx){
 //	cout << "d1 = " << descriptors1 << endl;
 //	cout << "d2 = " << descriptors2 << endl;
 
@@ -149,7 +167,7 @@ void obtainMatches(vector<KeyPoint> & kp1, vector<KeyPoint> & kp2, Mat & descrip
         float dis1 = matches[k][0].distance ;
         float dis2 = matches[k][1].distance ;
 //        cout << dis1 << " " << dis2 << " --- ";
-        if( (dis1 < 300.0 && dis1 > 0) || (dis2 < 300.0 && dis2 > 0) ){	//distancia pequeña entre imagen1 e imagen2[0] e imagen2[1]
+        if( (dis1 < 300.0 && dis1 > 0) || (dis2 < 300.0 && dis2 > 0) ){			//distancia pequeña entre imagen1 e imagen2[0] e imagen2[1]
             if (  dis2 / dis1 > 1.5){		//la diferencia de distancias es grande, por tanto una de ellas sera buena
                 Best_Matches.push_back(matches[k][0]);
             }
@@ -165,30 +183,34 @@ void obtainMatches(vector<KeyPoint> & kp1, vector<KeyPoint> & kp2, Mat & descrip
         points2.push_back( kp2[ Best_Matches[l].trainIdx ].pt );
         points2_idx.push_back(Best_Matches[l].trainIdx);
     }
+
+    Mat im_matches;
+    drawMatches(im1, kp1, im2, kp2, Best_Matches, im_matches, Scalar::all(-1), Scalar::all(-1), vector<char>(), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    imshow("Matches", im_matches);
+    waitKey(0);
+
 }
-/*
-Mat_<double> LinearLSTriangulation(
-Point3d u,//homogenous image point (u,v,1)
-Matx34d P,//camera 1 matrix
-Point3d u1,//homogenous image point in 2nd camera
-Matx34d P1//camera 2 matrix
-)
-{
-//build A matrix
-Matx43d A(u.x*P(2,0)-P(0,0),u.x*P(2,1)-P(0,1),u.x*P(2,2)-P(0,2),
-u.y*P(2,0)-P(1,0),u.y*P(2,1)-P(1,1),u.y*P(2,2)-P(1,2),
-u1.x*P1(2,0)-P1(0,0), u1.x*P1(2,1)-P1(0,1),u1.x*P1(2,2)-P1(0,2),
-u1.y*P1(2,0)-P1(1,0), u1.y*P1(2,1)-P1(1,1),u1.y*P1(2,2)-P1(1,2)
-);
-//build B vector
-Matx41d B(-(u.x*P(2,3)-P(0,3)),
--(u.y*P(2,3)-P(1,3)),
--(u1.x*P1(2,3)-P1(0,3)),
--(u1.y*P1(2,3)-P1(1,3)));
-//solve for X
-Mat_<double> X;
-solve(A,B,X,DECOMP_SVD);
-return X;
-}
-*/
+
+
+//void viewerOneOff (pcl::visualization::PCLVisualizer& viewer) {
+//    viewer.setBackgroundColor (1.0, 0.5, 1.0);
+//    pcl::PointXYZ o;
+//    o.x = 1.0;
+//    o.y = 0;
+//    o.z = 0;
+//    viewer.addSphere (o, 0.25, "sphere", 0);
+//    std::cout << "i only run once" << std::endl;
+//}
+//
+//void viewerPsycho (pcl::visualization::PCLVisualizer& viewer){
+//    static unsigned count = 0;
+//    std::stringstream ss;
+//    ss << "Once per viewer loop: " << count++;
+//    viewer.removeShape ("text", 0);
+//    viewer.addText (ss.str(), 200, 300, "text", 0);
+//
+//    //FIXME: possible race condition here:
+////    user_data++;
+//}
+
 #endif /* SRC_GEOMETRIA3D_H_ */
