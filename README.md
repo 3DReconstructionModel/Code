@@ -1,5 +1,6 @@
 # Code
-Librerias necesarias 
+This repository provides a 3d reconstruction of a model from 2d images. For using this repository you will need the camera calibration parameters, code is provided in the other repository. An output of this code can be seen in :: [VIDEO](https://www.youtube.com/watch?v=yXkHJ7g3-6k)
+Necessary libraries:
 
 opencv_core
 pcl_visualization
@@ -13,13 +14,3 @@ opencv_features2d
 cvsba
 opencv_calib3d
 opencv_videoio
-
-Includes necesarios
-
-/usr/local/include
-/usr/include/boost
-/usr/include/eigen3
-/usr/include/vtk-6.2
-/usr/include/pcl-1.7
-/home/irenerrrd
-/home/irenerrrd/opencv_contrib/modules/xfeatures2d/include
